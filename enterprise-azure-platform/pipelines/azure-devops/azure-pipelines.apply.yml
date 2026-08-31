@@ -1,0 +1,46 @@
+trigger:
+  none
+
+pr:
+  none
+
+variables:
+  terraformVersion: '1.7.5'
+  workingDirectory: '$(Build.SourcesDirectory)/enterprise-azure-platform/workloads/dev'
+
+steps:
+  - checkout: self
+
+  - task: AzureCLI@2
+    displayName: 'Azure Login'
+    inputs:
+      azureSubscription: '$(azureServiceConnection)'
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        echo "Logging into Azure"
+        az account show
+
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Download Terraform Plan'
+    inputs:
+      buildType: 'current'
+      artifactName: 'tfplan'
+      targetPath: '$(Pipeline.Workspace)/tfplan'
+
+  - task: TerraformInstaller@1
+    displayName: 'Install Terraform'
+    inputs:
+      terraformVersion: '$(terraformVersion)'
+
+  - script: |
+      cd "$(workingDirectory)"
+      terraform init -input=false
+      terraform apply -input=false -auto-approve "$(Pipeline.Workspace)/tfplan/tfplan.out"
+      echo "Terraform apply completed successfully"
+    displayName: 'Terraform Apply'
+    env:
+      ARM_CLIENT_ID: '$(ARM_CLIENT_ID)'
+      ARM_CLIENT_SECRET: '$(ARM_CLIENT_SECRET)'
+      ARM_SUBSCRIPTION_ID: '$(ARM_SUBSCRIPTION_ID)'
+      ARM_TENANT_ID: '$(ARM_TENANT_ID)'

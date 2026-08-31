@@ -1,0 +1,57 @@
+pipeline:
+  name: enterprise-azure-platform-terraform
+  identifier: enterprise_azure_platform_terraform
+  projectIdentifier: default_project
+  orgIdentifier: default_org
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.Github
+        repoName: example-org/enterprise-azure-platform
+        build: <+input>
+
+stages:
+  - stage:
+      name: Terraform_Plan
+      identifier: Terraform_Plan
+      type: CI
+      spec:
+        cloneCodebase: true
+        execution:
+          steps:
+            - step:
+                type: Run
+                name: Terraform Plan
+                identifier: terraform_plan
+                spec:
+                  connectorRef: account.dockerhub
+                  image: hashicorp/terraform:1.7.5
+                  shell: Sh
+                  command: |
+                    cd enterprise-azure-platform/workloads/dev
+                    terraform init -input=false
+                    terraform plan -input=false -lock=false -out=tfplan.out
+                    echo "Terraform plan completed"
+                    terraform show -no-color tfplan.out
+
+  - stage:
+      name: Terraform_Apply
+      identifier: Terraform_Apply
+      type: CD
+      spec:
+        serviceDependencies: []
+        execution:
+          steps:
+            - step:
+                type: Run
+                name: Terraform Apply
+                identifier: terraform_apply
+                spec:
+                  connectorRef: account.dockerhub
+                  image: hashicorp/terraform:1.7.5
+                  shell: Sh
+                  command: |
+                    cd enterprise-azure-platform/workloads/dev
+                    terraform init -input=false
+                    terraform apply -input=false -auto-approve
+                    echo "Terraform apply completed successfully"
